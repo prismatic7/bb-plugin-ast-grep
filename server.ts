@@ -15,6 +15,7 @@ import { z } from "zod";
 import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 import { existsSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
 
 const execFileAsync = promisify(execFileCb);
 
@@ -106,9 +107,10 @@ export default async function plugin(bb: BbPluginApi) {
     return bin();
   }
 
-  async function run(args: string[], signal?: AbortSignal) {
+  async function run(args: string[], cwd: string, signal?: AbortSignal) {
     try {
       const { stdout, stderr } = await execFileAsync(requireBin() ?? DEFAULT_BIN, args, {
+        cwd,
         timeout: 60_000,
         maxBuffer: 8 * 1024 * 1024,
         signal,
@@ -138,9 +140,11 @@ export default async function plugin(bb: BbPluginApi) {
       path: z.string().optional().describe("File or directory to search. Default: the project root."),
       maxMatches: z.number().int().min(1).max(MAX_MATCHES).optional().describe("Cap on returned matches (default 200)."),
     }),
-    async execute({ pattern, lang, path, maxMatches }, { signal }) {
-      const args = ["run", "-p", pattern, "-l", lang, "--json=stream", path || "."];
-      const r = await run(args, signal);
+    async execute({ pattern, lang, path, maxMatches }, { threadId, projectId, signal }) {
+      const cwd = await threadCwd(bb, threadId, projectId);
+      const target = path ? (isAbsolute(path) ? path : resolve(cwd, path)) : cwd;
+      const args = ["run", "-p", pattern, "-l", lang, "--json=stream", target];
+      const r = await run(args, cwd, signal);
       if (!r.ok) return r.message;
       const matches = parseSearchStream(r.stdout);
       return formatMatches(matches, maxMatches ?? MAX_MATCHES);
@@ -161,11 +165,13 @@ export default async function plugin(bb: BbPluginApi) {
       path: z.string().optional().describe("File or directory. Default: the project root."),
       apply: z.boolean().optional().describe("Write the change. Default false (preview diff only)."),
     }),
-    async execute({ pattern, rewrite, lang, path, apply }, { signal }) {
+    async execute({ pattern, rewrite, lang, path, apply }, { threadId, projectId, signal }) {
+      const cwd = await threadCwd(bb, threadId, projectId);
+      const target = path ? (isAbsolute(path) ? path : resolve(cwd, path)) : cwd;
       const args = ["run", "-p", pattern, "-r", rewrite, "-l", lang];
       if (apply) args.push("--update-all");
-      args.push(path || ".");
-      const r = await run(args, signal);
+      args.push(target);
+      const r = await run(args, cwd, signal);
       if (!r.ok) return r.message;
       const body = (r.stdout || "").trim();
       if (!body) return "No structural matches — nothing to rewrite.";
@@ -177,4 +183,34 @@ export default async function plugin(bb: BbPluginApi) {
   bb.onDispose(() => {
     bb.log.info("bb-plugin-ast-grep disposed");
   });
+}
+
+/** The directory this thread actually works in: its environment's path, not
+ *  the project root. A worktree or an attached workspace is a different
+ *  directory from the project, and resolving paths against the project puts
+ *  files in the wrong tree. */
+export async function threadCwd(bb: BbPluginApi, threadId: string, projectId: string): Promise<string> {
+  const asPath = (v: any): string | null =>
+    v && typeof v === "object" && typeof v.path === "string" && v.path.trim() ? v.path : null;
+  try {
+    const t: any = await bb.sdk.threads.get({ threadId } as any);
+    const thread = t?.thread ?? t;
+    const envId = thread?.environmentId;
+    if (envId) {
+      const e: any = await bb.sdk.environments.get({ environmentId: envId } as any);
+      const p = asPath(e?.environment ?? e);
+      if (p) return p;
+    }
+  } catch {
+    // fall through to the project
+  }
+  try {
+    const p: any = await bb.sdk.projects.get({ projectId } as any);
+    const sources = (p?.project ?? p)?.sources ?? [];
+    const src = Array.isArray(sources) ? sources.find((s: any) => s.type === "local_path") : null;
+    if (src?.path) return src.path;
+  } catch {
+    // fall through to the server cwd
+  }
+  return process.cwd();
 }
