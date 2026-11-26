@@ -58,6 +58,23 @@ bb plugin install . --yes
 bb plugin reload ast-grep
 ```
 
+## The real-thread smoke test
+
+```sh
+npm run smoke        # node scripts/smoke-cwd.mjs — spends one model turn
+```
+
+Unit tests call the parsers; they cannot see which directory the tool ran in.
+This one spawns a real thread on a temp workspace, with a project whose path is
+somewhere else, and asserts that `bb_ast_search` with `path: "."` reports a file
+inside the workspace. It is what caught the original bug: the tool resolved
+against `$HOME`, because the tool context carries `threadId` and `projectId` but
+no cwd.
+
+Exit codes: 0 pass, 1 fail (prints the path it actually resolved), 77 skipped
+when no bb CLI or project is available. It is not part of `npm test`, because
+one run spends a model turn.
+
 ## Development
 
 ```sh

@@ -25,6 +25,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "bundle": "bb plugin build .",
-    "test": "node --test test/ast-grep.test.ts"
+    "test": "node --test test/ast-grep.test.ts",
+    "smoke": "node scripts/smoke-cwd.mjs"
   }
 }
