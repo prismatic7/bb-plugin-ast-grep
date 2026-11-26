@@ -1,0 +1,12 @@
+bb-plugin-ast-grep
+==================
+
+This plugin calls the ast-grep CLI (https://github.com/ast-grep/ast-grep, MIT)
+as an external binary. No ast-grep source is copied or linked into this
+plugin: the relationship is the same as bb-plugin-rtk's with rtk.
+
+The pattern language, the language grammars and the rewriting are ast-grep's;
+this plugin contributes typed tools, token-shaped output and a preview-first
+rewrite policy.
+
+Everything in this repository is MIT, original work by prismatic7.
