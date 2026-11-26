@@ -9,26 +9,34 @@ the plugin is a typed caller over the CLI.
 
 ## Tools
 
-### `ast_grep_search`
+### `bb_ast_search`
 
 ```
-ast_grep_search(pattern: string, lang: string, path?: string, maxMatches?: number)
+bb_ast_search(pattern: string, lang: string, path?: string, maxMatches?: number)
 ```
 
 Pass an AST pattern with metavariables — `console.log($A)`,
 `if ($COND) { $$$BODY }` — plus a language. Returns
 `path:line:column  source line` per match, capped at 200, with a count.
 
-### `ast_grep_rewrite`
+### `bb_ast_rewrite`
 
 ```
-ast_grep_rewrite(pattern: string, rewrite: string, lang: string, path?: string, apply?: boolean)
+bb_ast_rewrite(pattern: string, rewrite: string, lang: string, path?: string, apply?: boolean)
 ```
 
 Substitutes the pattern's metavariables into `rewrite`. **Preview-only by
 default**: it returns a unified diff and writes nothing. Call it again with
 `apply: true` to write. A structural rewrite is precise but not type-aware,
 so the diff is the point.
+
+## Why the `bb_` prefix
+
+BB registers plugin tools into the same namespace a provider's own extensions
+see. Pi already ships `ast_grep_search` (pi-lens) and `web_search` /
+`fetch_content` (pi-web-access); registering those names made pi refuse to
+start, failing the whole thread with a tool-name conflict. Scoping the names
+keeps both sets available.
 
 ## Languages
 

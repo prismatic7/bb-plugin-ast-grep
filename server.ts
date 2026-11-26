@@ -5,8 +5,8 @@
 // a thin, typed caller, the same relationship bb-plugin-rtk has with rtk.
 //
 // Two tools:
-//   ast_grep_search  — pattern → matches (path:line:col + the line)
-//   ast_grep_rewrite — pattern + rewrite → a unified diff, or the applied edit
+//   bb_ast_search  — pattern → matches (path:line:col + the line)
+//   bb_ast_rewrite — pattern + rewrite → a unified diff, or the applied edit
 //
 // A rewrite is preview-only unless `apply: true`, because a structural rewrite
 // is the one operation here that changes files without a human seeing it first.
@@ -125,7 +125,7 @@ export default async function plugin(bb: BbPluginApi) {
   }
 
   bb.agents.registerTool({
-    name: "ast_grep_search",
+    name: "bb_ast_search",
     description:
       "Search code by syntax tree instead of text: pass an AST pattern with $METAVARIABLES " +
       "(e.g. 'console.log($A)', 'if ($COND) { $$$BODY }') and a language. Matches calls, " +
@@ -148,7 +148,7 @@ export default async function plugin(bb: BbPluginApi) {
   });
 
   bb.agents.registerTool({
-    name: "ast_grep_rewrite",
+    name: "bb_ast_rewrite",
     description:
       "Rewrite code by syntax pattern: matches an AST pattern and replaces each match with " +
       "`rewrite`, where $METAVARIABLES from the pattern are substituted. By default it returns " +
