@@ -18,6 +18,9 @@
 //   BB_SMOKE_PROJECT=proj_…  # pick the project to spawn under
 //   BB_SMOKE_KEEP=1          # keep the temp workspace and print it
 //
+// Canonical copy: ${UPSTREAM}. A repo that vendors this file keeps
+// HARNESS_VERSION in step with it; change the prompt and marker only.
+//
 // Exit: 0 pass, 1 fail (prints what the agent actually said), 77 skipped.
 
 import { execFile } from "node:child_process";
@@ -28,6 +31,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const run = promisify(execFile);
+
+// Bump when the harness LOGIC changes (comparison, exit codes, failure
+// classification) — not when you change the prompt or the marker, which every
+// copy is meant to change. A vendored copy that reports a different number is
+// stale, and that is the point of the number.
+const HARNESS_VERSION = 1;
+const UPSTREAM = "https://github.com/prismatic7/bb-plugin-ast-grep/blob/main/scripts/smoke-cwd.mjs";
+
 const MARKER = "cwd-probe-marker.ts";
 
 function bbBinary() {
@@ -149,7 +160,7 @@ async function main() {
       return fail(`resolved inside the workspace but to the wrong file: ${got}`, ws, threadId);
     }
 
-    console.log(`PASS: bb_ast_search resolved "." to the thread's environment (${got})`);
+    console.log(`PASS (harness v${HARNESS_VERSION}): bb_ast_search resolved "." to the thread's environment (${got})`);
     const localPath = (project.sources ?? []).find((src) => src.type === "local_path")?.path ?? "?";
     console.log(`      project ${project.id} (${localPath}) ≠ workspace ${ws}`);
     if (threadId) console.log(`      thread: ${threadId}`);
@@ -165,7 +176,7 @@ function indent(text) {
 }
 
 function fail(message, workspace, threadId) {
-  console.error(`FAIL: ${message}`);
+  console.error(`FAIL (harness v${HARNESS_VERSION}): ${message}`);
   if (threadId) console.error(`      thread: ${threadId}`);
   console.error(`      workspace: ${workspace}`);
   return 1;
@@ -174,7 +185,7 @@ function fail(message, workspace, threadId) {
 main().then(
   (code) => process.exit(code ?? 0),
   (err) => {
-    console.error(`ERROR: ${err?.stack ?? err}`);
+    console.error(`ERROR (harness v${HARNESS_VERSION}): ${err?.stack ?? err}`);
     process.exit(1);
   },
 );

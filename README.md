@@ -75,6 +75,11 @@ Exit codes: 0 pass, 1 fail (prints the path it actually resolved), 77 skipped
 when no bb CLI or project is available. It is not part of `npm test`, because
 one run spends a model turn.
 
+This file is the canonical copy. A plugin repo that needs the same check
+vendors it and keeps `HARNESS_VERSION` in step — change the prompt and the
+marker, never the comparison, the exit codes or the failure messages. Improving
+the harness means changing it here first.
+
 ## Development
 
 ```sh
